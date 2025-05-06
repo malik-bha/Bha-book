@@ -1,43 +1,43 @@
 const books = [
   {
     name: "اردو ادب",
-    image: "book1.png",
+    image: "images/book1.png",
     oldPrice: 800,
     newPrice: 500
   },
   {
     name: "اسلامی تاریخ",
-    image: "book2.png",
+    image: "images/book2.png",
     oldPrice: 900,
     newPrice: 650
   },
   {
     name: "تفسیر قرآن جلد دوم",
-    image: "book3.png",
+    image: "images/book3.png",
     oldPrice: 1200,
     newPrice: 850
   },
 {
   name: " نورالانوار",
-  image: "book4.png",
+  image: "images/book4.png",
   oldPrice: 500,
   newPrice: 450
 },
 {
     name: "تفسیر قرآن",
-    image: "book5.png",
+    image: "images/book5.png",
     oldPrice: 1200,
     newPrice: 850
   },
 {
   name: "تفسیر قرآن",
-  image: "book6.png",
+  image: "images/book6.png",
   oldPrice: 1200,
   newPrice: 850
 },
 {
   name: "سیر قرآن",
-  image: "book7.png",
+  image: "images/book7.png",
   oldPrice: 1200,
   newPrice: 850
 },
