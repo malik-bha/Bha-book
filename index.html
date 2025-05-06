@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Splash Screen</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    img {
+      width: 700px; /* اپنی تصویر کے حساب سے سائز ایڈجسٹ کریں */
+    }
+
+    .loader {
+      margin-top: 20px;
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid red;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <script>
+    setTimeout(function () {
+      window.location.href = "opop.html";
+    }, 5000); // 5000 milliseconds = 5 seconds
+  </script>
+</head>
+<body>
+  <img src="splash.png" alt="Logo"> <!-- یہاں اپنی PNG فائل کا نام رکھیں -->
+  <div class="loader"></div>
+</body>
+</html>
