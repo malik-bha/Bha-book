@@ -63,8 +63,7 @@ function loadBooks(filter = "", onlyFav = false) {
       // Star icon
       const star = document.createElement("span");
       star.className = "star";
-      star.innerText = favList.includes(index) ? "★" : "☆";
-      if (favList.includes(index)) star.classList.add("filled");
+      star.innerText = favList.includes(index) ? "★"newnew     if (favList.includes(index)) star.classList.add("filled");
       star.addEventListener("click", () => {
         toggleFav(index);
       });
@@ -90,10 +89,7 @@ function loadBooks(filter = "", onlyFav = false) {
       div.appendChild(h3);
       div.appendChild(priceDiv);
       div.appendChild(btn);
-
-      container.appendChild(div);
-    }
-  });
+container.insertBefore(div, container.firstChild);
 }
 
 function toggleFav(index) {
