@@ -89,8 +89,10 @@ function loadBooks(filter = "", onlyFav = false) {
       div.appendChild(h3);
       div.appendChild(priceDiv);
       div.appendChild(btn);
+      
 container.insertBefore(div, container.firstChild);
-}
+   }
+  });
 
 function toggleFav(index) {
   let favList = JSON.parse(localStorage.getItem("favourites")) || [];
