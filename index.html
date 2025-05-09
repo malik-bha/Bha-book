@@ -1,46 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Splash Screen</title>
-  <style>
-    body {
-      margin: 0;
-      background-color: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      flex-direction: column;
-    }
-
-    img {
-      width: 300px; /* اپنی تصویر کے حساب سے سائز ایڈجسٹ کریں */
-    }
-
-    .loader {
-      margin-top: 20px;
-      border: 6px solid #f3f3f3;
-      border-top: 6px solid red;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
-  <script>
-    setTimeout(function () {
-      window.location.href = "opop.html";
-    }, 5000); // 5000 milliseconds = 5 seconds
-  </script>
+  <title>Signup Page</title>
 </head>
 <body>
-  <img src="splash.png" alt="Logo"> <!-- یہاں اپنی PNG فائل کا نام رکھیں -->
-  <div class="loader"></div>
+  <div id="formDiv">
+    <h2>Signup</h2>
+    <form id="userForm">
+      Name: <input type="text" id="name" required><br>
+      Mobile: <input type="text" id="mobile" required><br>
+      <button type="submit">Signup</button>
+    </form>
+  </div>
+
+  <script>
+    const webAppUrl = "https://script.google.com/macros/s/AKfycbzjCU30aGTnF1zT0l--J1MuNcNOEd7nCN0jZLw4GRNGG8mhJ_eFxjCppEJzydJzTBhi/exec";
+
+    // یہاں اپنا welcome والا HTML یا اپنی ویب سائٹ کا URL لگائیں
+    const personalURL = "malik.html";  // جیسے "dashboard.html" یا "https://mysite.com/welcome.html"
+
+    // اگر پہلے signup ہو چکا ہے تو سیدھا personal URL پر redirect
+    if (localStorage.getItem("signedUp") === "yes") {
+      window.location.href = personalURL;
+    }
+
+    document.getElementById("userForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value;
+      const mobile = document.getElementById("mobile").value;
+
+      // Save info locally
+      localStorage.setItem("signedUp", "yes");
+      localStorage.setItem("name", name);
+      localStorage.setItem("mobile", mobile);
+
+      // Send to Google Sheets
+      fetch(webAppUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name, mobile })
+      })
+      .then(response => response.text())
+      .then(data => {
+        // Redirect after successful signup
+        window.location.href = personalURL;
+      })
+      .catch(error => {
+        alert("Error sending data: " + error);
+      });
+    });
+  </script>
 </body>
 </html>
