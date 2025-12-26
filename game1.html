@@ -282,7 +282,49 @@
         document.getElementById('res-popup-box').style.display = 'flex';
     }
 
-    window.onload = () => { loadBalance(); startTimer(); renderGameHistory(); renderLast5(); renderMyHistory(); };
+    // اس فنکشن کو بھی اپنے اسکرپٹ میں کہیں بھی شامل کر لیں (مثلاً startTimer سے پہلے یا بعد میں)
+function fillInitialHistory(currentPID) {
+    let gH = JSON.parse(localStorage.getItem('game_h')) || [];
+    
+    // اگر ہسٹری خالی ہے تو پچھلے 10 رزلٹ خود بخود تیار کرے گا
+    if (gH.length === 0) {
+        let startPID = parseInt(currentPID) - 1;
+        for (let i = 0; i < 10; i++) {
+            let tempNum = Math.floor(Math.random() * 10);
+            let tempColors = colorsMap[tempNum];
+            let tempSize = tempNum >= 5 ? 'Big' : 'Small';
+            
+            gH.push({
+                p: (startPID - i).toString(),
+                n: tempNum,
+                s: tempSize,
+                c: tempColors
+            });
+        }
+        localStorage.setItem('game_h', JSON.stringify(gH));
+    }
+}
+
+// اپنے پرانے window.onload کو ڈیلیٹ کر کے یہ والا پیسٹ کریں
+window.onload = () => {
+    // موجودہ پیریڈ نمبر نکالنا تاکہ اس سے پیچھے کی ہسٹری بھری جا سکے
+    let sec = new Date().getSeconds();
+    let currentPID = new Date().getFullYear().toString() + 
+                     (new Date().getMonth() + 1).toString().padStart(2, '0') + 
+                     new Date().getDate().toString().padStart(2, '0') + 
+                     Math.floor((new Date().getHours() * 3600 + new Date().getMinutes() * 60 + sec) / 30);
+    
+    // ہسٹری بھرنا
+    fillInitialHistory(currentPID);
+    
+    // باقی تمام فنکشنز کو لوڈ کرنا
+    loadBalance(); 
+    startTimer(); 
+    renderGameHistory(); 
+    renderLast5(); 
+    renderMyHistory(); 
+};
+
 </script>
 </body>
 </html>
