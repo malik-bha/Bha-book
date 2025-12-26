@@ -6,21 +6,21 @@
     <title>Jalwa Pro - Professional</title>
     <style>
         :root { 
-            --bg: #090e1d; --card: #161d31; --gold: #fb9401; 
+            --bg: #010A22; --card: #161d31; --gold: #fb9401; 
             --green: #2ecc71; --red: #d9534f; --violet: #9c27b0; 
             --gray: #8a9bb5; 
         }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding-bottom: 50px; user-select: none; }
         .app { width: 100%; max-width: 400px; margin: auto; }
-        .wallet { background: linear-gradient(135deg, #2a5298, #1e3c72); margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .timer-card { background: #113a32; margin: 10px; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; border: 1px solid #1f4037; }
-        .clock { font-size: 32px; font-weight: bold; color: var(--gold); }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; background: #111a2e; margin: 10px; border-radius: 15px; }
+        .wallet { background: linear-gradient(135deg, #022170, #022170); margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .timer-card { background: #196C62; margin: 10px; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; border: 1px solid #1f4037; }
+        .clock { font-size: 38px; font-weight: bold; color: var(--black); }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; background: #01164D; margin: 10px; border-radius: 15px; }
         .ball-btn { width: 100%; cursor: pointer; border: none; background: none; }
-        .ball-btn img { width: 100%; height: auto; }
+        .ball-btn img { width: 120%; height: auto; }
         
         .last-res-box { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
-        .res-ball-img { width: 25px; height: 25px; border-radius: 50%; }
+        .res-ball-img { width: 28px; height: 28px; border-radius: 50%; }
 
         .history { margin: 10px; background: var(--card); border-radius: 12px; overflow: hidden; min-height: 250px; }
         .h-tabs { display: flex; background: #10192d; }
@@ -66,10 +66,12 @@
 
     <div class="timer-card">
         <div>
-            <div style="font-size: 11px; color:rgba(255,255,255,0.7)">WinGo 30sec</div>
+            <div>WinGo 30sec </div>
+            <div 
+            style="font-size: 14px; color:rgba(255,255,255,0.7)">Last 5 Result</div>
             <div id="last-5-results" class="last-res-box"></div>
         </div>
-        <div style="text-align: right;"><div id="clock" class="clock">00:00</div><div id="period" style="font-size: 11px; color:var(--gray); margin-top:5px;">Loading...</div></div>
+        <div style="text-align: right;"><div id="clock" class="clock">00:00</div><div id="period" style="font-weight: bold;font-size: 18px; color: black; margin-top:5px;">Loading...</div></div>
     </div>
 
     <div style="display:flex; gap:10px; padding:10px;">
@@ -156,19 +158,33 @@
 
     function startTimer() {
     setInterval(async () => {
-        let sec = new Date().getSeconds(); 
+        let now = new Date();
+        let sec = now.getSeconds(); 
+        let totalSeconds = (now.getHours() * 3600) + (now.getMinutes() * 60) + sec;
+        
+        // 30 سیکنڈ کے حساب سے کتنا وقت باقی ہے
         let timeLeft = 30 - (sec % 30);
-        let pID = new Date().getFullYear().toString() + (new Date().getMonth()+1).toString().padStart(2,'0') + new Date().getDate().toString().padStart(2,'0') + Math.floor((new Date().getHours()*3600 + new Date().getMinutes()*60 + sec)/30);
         
-        document.getElementById('clock').innerText = `00:${timeLeft.toString().padStart(2,'0')}`;
+        // موجودہ پیریڈ نمبر
+        let pID = now.getFullYear().toString() + 
+                  (now.getMonth() + 1).toString().padStart(2, '0') + 
+                  now.getDate().toString().padStart(2, '0') + 
+                  Math.floor(totalSeconds / 30);
+        
+        // گھڑی اپڈیٹ کریں (00:01 کے بعد براہ راست 00:30 دکھائے گا)
+        document.getElementById('clock').innerText = `00:${timeLeft.toString().padStart(2, '0')}`;
         document.getElementById('period').innerText = pID;
-        
-        // جب ٹائمر ختم ہو تو رزلٹ پروسیس کریں (async call کے ساتھ)
-        if (timeLeft === 30) {
-            await processResult(pID - 1);
+
+        // جب ٹائمر 1 پر پہنچے تو اگلے سیکنڈ (یعنی 0 پر) رزلٹ پروسیس ہو جائے گا
+        if (timeLeft === 1) {
+            // ہم ایک سیکنڈ کا انتظار کر کے ٹھیک زیرو پر رزلٹ نکالیں گے
+            setTimeout(async () => {
+                await processResult(pID);
+            }, 1000);
         }
     }, 1000);
 }
+
 
 
         async function processResult(pID) {
@@ -245,7 +261,7 @@
             let dots = x.c.map(clr => `<span class="dot" style="background:var(--${clr})"></span>`).join('');
             return `<tr>
                 <td>${x.p}</td>
-                <td style="color:var(--${primaryColor}); font-weight:bold;">${x.n}</td>
+                <td style="color:var(--${primaryColor}); font-weight:bold;font-size: 21px;">${x.n}</td>
                 <td>${x.s}</td>
                 <td>${dots}</td>
             </tr>`;
