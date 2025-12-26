@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>21Club – Secure Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
+
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    height:100vh;
+    font-family:'Poppins',sans-serif;
+    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+}
+
+.card{
+    width:360px;
+    background:#0b0b0b;
+    border-radius:22px;
+    padding:28px;
+    box-shadow:0 0 35px rgba(0,255,200,.35);
+}
+
+.logo{
+    text-align:center;
+    margin-bottom:20px;
+}
+.logo img{
+    width:160px;
+    max-width:100%;
+    object-fit:cover;
+}
+
+input{
+    width:100%;
+    padding:14px;
+    margin:10px 0;
+    border:none;
+    border-radius:14px;
+    background:#1c1c1c;
+    color:#fff;
+    font-size:15px;
+    outline:none;
+}
+
+input::placeholder{color:#888}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:16px;
+    background:linear-gradient(135deg,#00ffd5,#00bfa6);
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:12px;
+    color:#000;
+    position:relative;
+    overflow:hidden;
+}
+
+button:disabled{
+    opacity:.7;
+    cursor:not-allowed;
+}
+
+.switch{
+    text-align:center;
+    margin-top:14px;
+    font-size:14px;
+    color:#aaa;
+    cursor:pointer;
+}
+
+/* ===== LOADER ===== */
+.loader{
+    width:22px;
+    height:22px;
+    border:3px solid rgba(0,0,0,.2);
+    border-top:3px solid #000;
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    display:none;
+}
+
+@keyframes spin{
+    to{transform:translate(-50%,-50%) rotate(360deg)}
+}
+
+/* ===== TOAST ===== */
+.toast{
+    position:fixed;
+    bottom:-80px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#111;
+    padding:14px 22px;
+    border-radius:14px;
+    color:#fff;
+    font-size:14px;
+    box-shadow:0 0 20px rgba(0,255,200,.4);
+    transition:.4s;
+    z-index:999;
+}
+
+.toast.show{bottom:25px}
+.toast.success{border-left:5px solid #00ffd5}
+.toast.error{border-left:5px solid #ff4d4d}
+#splash{
+    position:fixed;
+    inset:0;
+    background:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+#splash img{
+    width:100%;
+    height:100%;
+    object-fit:cover;   /* full screen cover */
+}
+
+@keyframes fadeIn{
+    from{opacity:0; transform:scale(.9)}
+    to{opacity:1; transform:scale(1)}
+}
+</style>
+</head>
+
+<body>
+    
+    <div id="splash">
+    <img src="splash.png">
+</div>
+
+<div class="card">
+   <div class="logo">
+    <img src="logo.png" alt="21Club Logo">
+</div>
+
+    <!-- SIGNUP -->
+    <div id="signupBox">
+        <input id="sname" placeholder="Full Name">
+        <input id="smobile" placeholder="Mobile Number">
+        <input id="spass" type="password" placeholder="Password">
+        <button onclick="signup(this)">
+            <span>Sign Up & Get ₹79</span>
+            <div class="loader"></div>
+        </button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="loginBox" style="display:none">
+        <input id="lmobile" placeholder="Mobile Number">
+        <input id="lpass" type="password" placeholder="Password">
+        <button onclick="login(this)">
+            <span>Login</span>
+            <div class="loader"></div>
+        </button>
+    </div>
+
+    <div class="switch" onclick="toggle()">Switch Login / Signup</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+
+/* AUTO LOGIN */
+if (localStorage.getItem("loggedIn") === "yes") {
+    setTimeout(() => {
+        location.href = "dashboard.html";
+    }, 2000);
+} else {
+    document.getElementById("splash").style.display = "none";
+}
+
+/* TOGGLE */
+function toggle(){
+    signupBox.style.display = signupBox.style.display==="none"?"block":"none";
+    loginBox.style.display = loginBox.style.display==="none"?"block":"none";
+}
+
+/* TOAST */
+function showToast(msg,type){
+    let t=document.getElementById("toast");
+    t.className="toast "+type+" show";
+    t.innerText=msg;
+    setTimeout(()=>t.className="toast",3000);
+}
+
+/* LOADING */
+function setLoading(btn,load){
+    btn.disabled=load;
+    btn.querySelector("span").style.opacity=load?0:1;
+    btn.querySelector(".loader").style.display=load?"block":"none";
+}
+
+/* SIGNUP */
+function signup(btn){
+if(!sname.value||!smobile.value||!spass.value){
+    showToast("All fields required","error");return;
+}
+setLoading(btn,true);
+
+fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+        type:"signup",
+        name:sname.value,
+        mobile:smobile.value,
+        password:spass.value
+    })
+})
+.then(r=>r.json())
+.then(d=>{
+    setLoading(btn,false);
+    if(d.status==="success"){
+        showToast("Signup successful ₹79 added","success");
+        localStorage.setItem("loggedIn","yes");
+        localStorage.setItem("mobile",smobile.value);
+        setTimeout(()=>location.href="dashboard.html",1200);
+    }else{
+        showToast(d.msg||"Signup failed","error");
+    }
+})
+.catch(()=>{
+    setLoading(btn,false);
+    showToast("Server error","error");
+});
+}
+
+/* LOGIN */
+function login(btn){
+setLoading(btn,true);
+
+fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+        type:"login",
+        mobile:lmobile.value,
+        password:lpass.value
+    })
+})
+.then(r=>r.json())
+.then(d=>{
+    setLoading(btn,false);
+    if(d.status==="success"){
+        showToast("Login successful","success");
+        localStorage.setItem("loggedIn","yes");
+        localStorage.setItem("mobile",lmobile.value);
+        setTimeout(()=>location.href="dashboard.html",1200);
+    }else{
+        showToast("Wrong mobile or password","error");
+    }
+})
+.catch(()=>{
+    setLoading(btn,false);
+    showToast("Server error","error");
+});
+}
+</script>
+
+</body>
+</html>

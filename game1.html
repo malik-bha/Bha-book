@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jalwa Pro - Professional</title>
+    <style>
+        :root { 
+            --bg: #090e1d; --card: #161d31; --gold: #fb9401; 
+            --green: #2ecc71; --red: #d9534f; --violet: #9c27b0; 
+            --gray: #8a9bb5; 
+        }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding-bottom: 50px; user-select: none; }
+        .app { width: 100%; max-width: 400px; margin: auto; }
+        .wallet { background: linear-gradient(135deg, #2a5298, #1e3c72); margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .timer-card { background: #113a32; margin: 10px; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; border: 1px solid #1f4037; }
+        .clock { font-size: 32px; font-weight: bold; color: var(--gold); }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; background: #111a2e; margin: 10px; border-radius: 15px; }
+        .ball-btn { width: 100%; cursor: pointer; border: none; background: none; }
+        .ball-btn img { width: 100%; height: auto; }
+        
+        .last-res-box { display: flex; gap: 5px; margin-top: 8px; align-items: center; }
+        .res-ball-img { width: 25px; height: 25px; border-radius: 50%; }
+
+        .history { margin: 10px; background: var(--card); border-radius: 12px; overflow: hidden; min-height: 250px; }
+        .h-tabs { display: flex; background: #10192d; }
+        .h-tab { flex:1; text-align:center; padding:12px; cursor:pointer; color: var(--gray); font-size: 14px; font-weight: bold; }
+        .h-tab.active { color: white; border-bottom: 2px solid var(--gold); background: rgba(251, 148, 1, 0.1); }
+        table { width: 100%; border-collapse: collapse; text-align: center; }
+        th { background: #1c2641; padding: 10px; color: var(--gray); font-size: 12px; }
+        td { padding: 12px 5px; border-bottom: 1px solid #242d41; font-size: 13px; }
+        
+        /* Premium Pop-up Style */
+        .res-popup { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .win-card { width: 85%; max-width: 320px; background: #fff; border-radius: 20px; overflow: hidden; text-align: center; animation: popScale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popScale { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .pop-top { padding: 30px 20px; color: white; position: relative; }
+        .pop-win { background: linear-gradient(180deg, #00d2ff 0%, #3a7bd5 100%); }
+        .pop-loss { background: linear-gradient(180deg, #4b6cb7 0%, #182848 100%); }
+        .win-amt-text { font-size: 36px; font-weight: bold; color: #fb9401; text-shadow: 0 2px 4px rgba(0,0,0,0.2); margin: 15px 0; }
+        .pop-details { padding: 20px; color: #333; font-weight: 500; }
+        .pop-close-btn { background: #fb9401; color: white; border: none; width: 100%; padding: 15px; font-weight: bold; font-size: 16px; cursor: pointer; }
+
+        /* Dot Style */
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+
+        /* Sheet Style */
+        .sheet { position: fixed; bottom: -100%; left: 0; width: 100%; background: #0b1426; border-radius: 25px 25px 0 0; transition: 0.3s; z-index: 2001; padding-bottom: 20px; }
+        .sheet.active { bottom: 0; }
+        .sheet-head { padding: 15px; text-align: center; border-radius: 25px 25px 0 0; font-weight: bold; }
+        .row-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #1c2641; }
+        .chip { background: #1c2641; border: none; color: white; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+        .chip.active { background: var(--green); }
+        .qty-box { display: flex; align-items: center; background: #060e1e; border-radius: 5px; }
+        .q-btn { background: var(--green); border: none; color: white; width: 30px; height: 30px; font-weight: bold; font-size: 18px; }
+        .q-input { width: 40px; text-align: center; background: none; border: none; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div class="wallet">
+        <div><small>Available Balance</small><div id="bal-text" style="font-size: 22px; font-weight: bold;">₹0.00</div></div>
+        <button onclick="loadBalance()" style="background:var(--gold); border:none; padding:8px 20px; border-radius:20px; font-weight:bold;">Refresh</button>
+    </div>
+
+    <div class="timer-card">
+        <div>
+            <div style="font-size: 11px; color:rgba(255,255,255,0.7)">WinGo 30sec</div>
+            <div id="last-5-results" class="last-res-box"></div>
+        </div>
+        <div style="text-align: right;"><div id="clock" class="clock">00:00</div><div id="period" style="font-size: 11px; color:var(--gray); margin-top:5px;">Loading...</div></div>
+    </div>
+
+    <div style="display:flex; gap:10px; padding:10px;">
+        <button onclick="openBet('Green')" style="flex:1; background:var(--green); border:none; padding:15px; border-radius:8px; color:white; font-weight:bold;">Green</button>
+        <button onclick="openBet('Violet')" style="flex:1; background:var(--violet); border:none; padding:15px; border-radius:8px; color:white; font-weight:bold;">Violet</button>
+        <button onclick="openBet('Red')" style="flex:1; background:var(--red); border:none; padding:15px; border-radius:8px; color:white; font-weight:bold;">Red</button>
+    </div>
+
+    <div class="grid" id="num-grid"></div>
+
+    <div style="display:flex; gap:10px; padding:0 10px 10px;">
+        <button onclick="openBet('Big')" style="flex:1; background:var(--gold); border:none; padding:12px; border-radius:8px; font-weight:bold;">Big</button>
+        <button onclick="openBet('Small')" style="flex:1; background:#3498db; border:none; padding:12px; border-radius:8px; color:white; font-weight:bold;">Small</button>
+    </div>
+
+    <div class="history">
+        <div class="h-tabs">
+            <div class="h-tab active" id="tab-game" onclick="switchTab('game')">Game history</div>
+            <div class="h-tab" id="tab-my" onclick="switchTab('my')">My history</div>
+        </div>
+        <div id="game-table-div"><table><thead><tr><th>Period</th><th>Num</th><th>Size</th><th>Color</th></tr></thead><tbody id="h-body"></tbody></table></div>
+        <div id="my-table-div" style="display:none; padding-top: 10px;"></div>
+    </div>
+</div>
+
+<div id="sheet" class="sheet">
+    <div id="sheet-header" class="sheet-head">WinGo 30sec</div>
+    <div style="padding:10px; text-align:center; background:#1c2641; font-size:13px;">Select <span id="target-name">...</span></div>
+    <div class="row-item"><span>Amount</span><div style="display:flex; gap:5px;"><button class="chip active" onclick="setBase(1)">1</button><button class="chip" onclick="setBase(10)">10</button><button class="chip" onclick="setBase(100)">100</button><button class="chip" onclick="setBase(1000)">1000</button></div></div>
+    <div class="row-item"><span>Quantity</span><div class="qty-box"><button class="q-btn" onclick="chQty(-1)">-</button><input type="number" id="qty-input" class="q-input" value="1" readonly><button class="q-btn" onclick="chQty(1)">+</button></div></div>
+    <div class="row-item" style="justify-content: flex-end; gap:8px;"><button class="chip" onclick="setX(1)">X1</button><button class="chip" onclick="setX(5)">X5</button><button class="chip" onclick="setX(10)">X10</button></div>
+    <div style="display:flex; margin:15px 10px 0; gap:10px;"><button onclick="closeBet()" style="flex:1; padding:15px; border:none; background:#283046; color:white; border-radius:5px;">Cancel</button><button id="confirm-btn" onclick="confirmBet()" style="flex:2; padding:15px; border:none; background:var(--green); color:white; font-weight:bold; border-radius:5px;">Total ₹<span id="total-val">1</span></button></div>
+</div>
+
+<div id="res-popup-box" class="res-popup">
+    <div class="win-card">
+        <div id="pop-header" class="pop-top">
+            <h1 id="pop-title" style="margin:0; font-size: 24px;">CONGRATULATIONS</h1>
+            <p style="opacity: 0.9; margin: 5px 0 0;">Lottery Result</p>
+        </div>
+        <div class="pop-details">
+            <div style="color: #777; font-size: 13px;">Win Amount</div>
+            <div id="pop-amt" class="win-amt-text">₹0.00</div>
+            <div style="background: #f8f9fa; border-radius: 10px; padding: 10px; font-size: 13px;">
+                Period: <span id="pop-period" style="font-weight: bold;">00000</span><br>
+                Number: <span id="pop-res-info" style="font-weight: bold;">...</span>
+            </div>
+        </div>
+        <button class="pop-close-btn" onclick="document.getElementById('res-popup-box').style.display='none'">CLOSE</button>
+    </div>
+</div>
+
+<script>
+    // Logic mostly same, with History & Popup styling fixes
+    const API_URL = "https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+    const mobile = localStorage.getItem("mobile");
+    let balance = 0, base = 1, qty = 1, currentTarget = '';
+    const colorsMap = { 0:['red','violet'], 1:['green'], 2:['red'], 3:['green'], 4:['red'], 5:['green','violet'], 6:['red'], 7:['green'], 8:['red'], 9:['green'] };
+
+    // Fill grid
+    const grid = document.getElementById('num-grid');
+    for(let i=0; i<10; i++) { grid.innerHTML += `<button class="ball-btn" onclick="openBet(${i})"><img src="boll${i}.png" onerror="this.src='https://via.placeholder.com/60?text=${i}'"></button>`; }
+
+    async function callScript(payload) { try { const r = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }); return await r.json(); } catch (e) { return null; } }
+    async function loadBalance() { if(!mobile) return; const d = await callScript({ type: "getUser", mobile: mobile }); if(d && d.balance !== undefined) { balance = parseFloat(d.balance); document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2); } }
+
+    function openBet(v) { currentTarget = v; qty = 1; document.getElementById('qty-input').value = 1; document.getElementById('target-name').innerText = v; const h = document.getElementById('sheet-header'); h.style.background = isNaN(v) ? (v==='Green'?'var(--green)':v==='Red'?'var(--red)':'var(--violet)') : '#1c2641'; upTot(); document.getElementById('sheet').classList.add('active'); }
+    function closeBet() { document.getElementById('sheet').classList.remove('active'); }
+    function setBase(v) { base = v; document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); event.target.classList.add('active'); upTot(); }
+    function chQty(v) { qty = Math.max(1, qty + v); document.getElementById('qty-input').value = qty; upTot(); }
+    function setX(x) { qty = x; document.getElementById('qty-input').value = x; upTot(); }
+    function upTot() { document.getElementById('total-val').innerText = (base * qty).toFixed(2); }
+
+    function confirmBet() {
+        let total = base * qty; if (balance < total) { alert("Insufficient Balance!"); return; }
+        let pID = document.getElementById('period').innerText;
+        balance -= total; document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2);
+        let myH = JSON.parse(localStorage.getItem('my_h')) || [];
+        myH.unshift({ p: pID, t: currentTarget, a: total, status: 'pending', res: 0 });
+        localStorage.setItem('my_h', JSON.stringify(myH.slice(0, 30)));
+        renderMyHistory(); closeBet();
+        callScript({ type: "game", mobile: mobile, change: -total }).then(d => { if(d) loadBalance(); });
+    }
+
+    function startTimer() {
+    setInterval(async () => {
+        let sec = new Date().getSeconds(); 
+        let timeLeft = 30 - (sec % 30);
+        let pID = new Date().getFullYear().toString() + (new Date().getMonth()+1).toString().padStart(2,'0') + new Date().getDate().toString().padStart(2,'0') + Math.floor((new Date().getHours()*3600 + new Date().getMinutes()*60 + sec)/30);
+        
+        document.getElementById('clock').innerText = `00:${timeLeft.toString().padStart(2,'0')}`;
+        document.getElementById('period').innerText = pID;
+        
+        // جب ٹائمر ختم ہو تو رزلٹ پروسیس کریں (async call کے ساتھ)
+        if (timeLeft === 30) {
+            await processResult(pID - 1);
+        }
+    }, 1000);
+}
+
+
+        async function processResult(pID) {
+        // ایڈمن API کا URL یہاں ڈالیں
+        const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbxXKG4lYJ_7m5eJjXv1jRcbtRHROXCrinfanv3wXBnbRMKz95O3-pcP6xTvCLuub8FJ/exec";
+        let winNum;
+        
+        try {
+            // سرور سے رزلٹ مانگیں اور پیریڈ نمبر بھیجیں
+            const response = await fetch(ADMIN_API_URL, {
+                method: "POST",
+                body: JSON.stringify({ type: "getWinNum", currentPeriod: pID })
+            });
+            const data = await response.json();
+            winNum = data.winNum;
+        } catch(e) {
+            // اگر سرور کام نہ کرے تو رینڈم نمبر چلے گا
+            winNum = Math.floor(Math.random() * 10);
+        }
+
+        let winColors = colorsMap[winNum];
+        let winSize = winNum >= 5 ? 'Big' : 'Small';
+
+        // ہسٹری اپڈیٹ کریں
+        let gH = JSON.parse(localStorage.getItem('game_h')) || [];
+        gH.unshift({p: pID, n: winNum, s: winSize, c: winColors});
+        localStorage.setItem('game_h', JSON.stringify(gH.slice(0, 15)));
+        
+        renderGameHistory();
+        renderLast5();
+
+        // یوزر کی بیٹ چیک کریں
+        let myH = JSON.parse(localStorage.getItem('my_h')) || [];
+        let anyWin = false, totalWin = 0, betFound = false;
+
+        myH.forEach(bet => {
+            if (bet.p == pID && bet.status === 'pending') {
+                betFound = true;
+                let won = false;
+                let contract = bet.a * 0.98;
+
+                if (String(bet.t) === String(winNum)) { bet.res = contract * 9; won = true; }
+                else if (bet.t === winSize) { bet.res = contract * 1.96; won = true; }
+                else if (winColors.includes(String(bet.t).toLowerCase())) {
+                    bet.res = (winColors.length > 1) ? contract * 1.5 : contract * 2;
+                    won = true;
+                }
+
+                if (won) {
+                    bet.status = 'success'; totalWin += bet.res; anyWin = true;
+                } else { bet.status = 'failed'; }
+            }
+        });
+
+        if (betFound) {
+            localStorage.setItem('my_h', JSON.stringify(myH));
+            if(anyWin) await callScript({ type: "game", mobile: mobile, change: totalWin });
+            showPopup(anyWin, totalWin, winNum, winColors[0], pID);
+            loadBalance();
+            renderMyHistory();
+        }
+    }
+
+    function renderLast5() {
+        let h = JSON.parse(localStorage.getItem('game_h')) || [];
+        document.getElementById('last-5-results').innerHTML = h.slice(0, 5).map(x => `<img src="boll${x.n}.png" class="res-ball-img" onerror="this.src='https://via.placeholder.com/25?text=${x.n}'">`).join('');
+    }
+
+    function renderGameHistory() {
+        let h = JSON.parse(localStorage.getItem('game_h')) || [];
+        // Fixed History Table logic
+        document.getElementById('h-body').innerHTML = h.map(x => {
+            let primaryColor = x.c[0]; // First color
+            let dots = x.c.map(clr => `<span class="dot" style="background:var(--${clr})"></span>`).join('');
+            return `<tr>
+                <td>${x.p}</td>
+                <td style="color:var(--${primaryColor}); font-weight:bold;">${x.n}</td>
+                <td>${x.s}</td>
+                <td>${dots}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderMyHistory() {
+        let h = JSON.parse(localStorage.getItem('my_h')) || [];
+        const container = document.getElementById('my-table-div');
+        if (h.length === 0) { container.innerHTML = "<center style='padding:20px;'>No Bet Found</center>"; return; }
+        container.innerHTML = h.map(x => {
+            let sClr = x.status==='pending'?'var(--gold)':(x.status==='success'?'var(--green)':'var(--red)');
+            return `<div style="background:#1c2641; margin:8px; border-radius:10px; padding:12px; display:flex; justify-content:space-between; border-left:5px solid ${sClr}">
+                <div><span style="font-size:11px; padding:2px 8px; border-radius:4px; border:1px solid ${sClr}; color:${sClr}">${x.status.toUpperCase()}</span><br><b>${x.t}</b> <small>${x.p}</small></div>
+                <div style="text-align:right">₹${x.status==='success'?x.res.toFixed(2):x.a.toFixed(2)}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function switchTab(t) {
+        document.getElementById('tab-game').classList.toggle('active', t==='game');
+        document.getElementById('tab-my').classList.toggle('active', t==='my');
+        document.getElementById('game-table-div').style.display = t==='game' ? 'block' : 'none';
+        document.getElementById('my-table-div').style.display = t==='my' ? 'block' : 'none';
+        if(t==='my') renderMyHistory();
+    }
+
+    function showPopup(win, amt, num, clr, p) {
+        document.getElementById('pop-header').className = "pop-top " + (win ? "pop-win" : "pop-loss");
+        document.getElementById('pop-title').innerText = win ? "CONGRATULATIONS" : "SORRY LOSE";
+        document.getElementById('pop-res-info').innerText = clr.toUpperCase() + " " + num;
+        document.getElementById('pop-period').innerText = p;
+        document.getElementById('pop-amt').innerText = "₹" + amt.toFixed(2);
+        document.getElementById('res-popup-box').style.display = 'flex';
+    }
+
+    window.onload = () => { loadBalance(); startTimer(); renderGameHistory(); renderLast5(); renderMyHistory(); };
+</script>
+</body>
+</html>

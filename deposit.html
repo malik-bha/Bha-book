@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Deposit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap');
+
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:Poppins,sans-serif;
+    background:#000;
+    color:#fff;
+}
+
+header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:15px;
+    font-size:18px;
+    font-weight:600;
+}
+
+.history{color:#ff6a6a;cursor:pointer}
+
+.section{padding:15px}
+
+.methods{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+}
+
+.method{
+    background:#111;
+    padding:14px;
+    border-radius:14px;
+    text-align:center;
+    font-size:13px;
+    cursor:pointer;
+    border:2px solid transparent;
+    transition:.3s;
+}
+.method.active{
+    border-color:#ff6a6a;
+    background:linear-gradient(135deg,#ff6a6a,#ff9472);
+    color:#000;
+    font-weight:600;
+}
+
+.amounts{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-top:10px;
+}
+
+.amount{
+    background:#111;
+    padding:12px;
+    border-radius:12px;
+    text-align:center;
+    cursor:pointer;
+    border:1px solid #222;
+}
+.amount.active{
+    background:#ff6a6a;
+    color:#000;
+    font-weight:600;
+}
+
+.deposit-btn{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    padding:16px;
+    background:#ff6a6a;
+    color:#000;
+    font-size:18px;
+    font-weight:700;
+    text-align:center;
+    cursor:pointer;
+}
+
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.9);
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+.modal-content{
+    background:#111;
+    padding:20px;
+    border-radius:18px;
+    width:90%;
+    max-width:360px;
+    text-align:center;
+}
+
+.qr{width:300px;margin:10px auto}
+
+.upi{
+    background:#000;
+    padding:10px;
+    border-radius:10px;
+    margin:10px 0;
+    font-size:14px;
+}
+
+.copy{color:#ff6a6a;cursor:pointer;font-size:13px}
+
+.pay-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    background:#1c1c1c;
+    padding:12px;
+    border-radius:14px;
+    margin-top:10px;
+    cursor:pointer;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    margin-top:12px;
+    border:none;
+    border-radius:12px;
+    background:#000;
+    color:#fff;
+}
+
+.submit{
+    background:#ff6a6a;
+    color:#000;
+    padding:12px;
+    border-radius:14px;
+    margin-top:12px;
+    cursor:pointer;
+    font-weight:600;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div onclick="history.back()">← Deposit</div>
+    <div class="history" onclick="openHistory()">Deposit history</div>
+</header>
+
+<div class="section">
+<h4>Select Method</h4>
+<div class="methods" id="methods"></div>
+
+<h4 style="margin-top:20px">Deposit Amount</h4>
+<div class="amounts" id="amounts"></div>
+</div>
+
+<div class="deposit-btn" onclick="openPay()">Deposit ₹<span id="finalAmt">0</span></div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal" id="modal">
+<div class="modal-content">
+    <img src="qr.png" class="qr">
+    <div class="upi">
+        <span id="upiText">8756331066@ybl</span><br>
+        <span class="copy" onclick="copyUPI()">Copy UPI</span>
+    </div>
+
+    <div class="pay-btn" onclick="openApp()">
+        <img id="appIcon" src="paytm.png" width="74">
+        <span id="openText">Open App</span>
+    </div>
+
+    <input id="utr" placeholder="Enter UTR Number">
+    <div class="submit" onclick="submitUTR()">Submit</div>
+</div>
+</div>
+
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+const UPI_ID="8756331066@ybl";
+
+let method="",amount=0;
+
+const methodList=[
+"PAYTM-VPAY","PAYTM-SUPER","PAYTM-7DAY",
+"PHONEPE-1","PHONEPE-2","PHONEPE-3",
+"GPAY-1","GPAY-2","GPAY-3"
+];
+
+const amtList=[10,30,50,100,300,500,700,1000,1300,1500,2000,3000];
+
+methodList.forEach(m=>{
+    let d=document.createElement("div");
+    d.className="method";
+    d.innerText=m;
+    d.onclick=()=>{
+        document.querySelectorAll(".method").forEach(x=>x.classList.remove("active"));
+        d.classList.add("active");
+        method=m;
+    };
+    methods.appendChild(d);
+});
+
+amtList.forEach(a=>{
+    let d=document.createElement("div");
+    d.className="amount";
+    d.innerText="₹"+a;
+    d.onclick=()=>{
+        document.querySelectorAll(".amount").forEach(x=>x.classList.remove("active"));
+        d.classList.add("active");
+        amount=a;
+        finalAmt.innerText=a;
+    };
+    amounts.appendChild(d);
+});
+
+function openHistory(){
+    window.location.href="deposit-history.html";
+}
+
+function openPay(){
+    if(!method||!amount){alert("Select method & amount");return;}
+    modal.style.display="flex";
+}
+
+function copyUPI(){
+    navigator.clipboard.writeText(UPI_ID);
+    alert("UPI Copied");
+}
+
+function openApp(){
+    let link="";
+    if(method.includes("PAYTM")){
+        link=`paytmmp://cash_wallet?featuretype=money_transfer&pa=${UPI_ID}&am=${amount}&cu=INR&tn=ShoaibMalik`;
+        appIcon.src="paytm.png"; openText.innerText="Open Paytm";
+    }
+    if(method.includes("PHONEPE")){
+        link=`phonepe://pay?pa=${UPI_ID}&pn=ShoaibMalik&am=${amount}&cu=INR&tn=ShoaibMalik`;
+        appIcon.src="phonepe.png"; openText.innerText="Open PhonePe";
+    }
+    if(method.includes("GPAY")){
+        link=`tez://upi/pay?pa=${UPI_ID}&pn=ShoaibMalik&am=${amount}&cu=INR&tn=ShoaibMalik`;
+        appIcon.src="gpay.png"; openText.innerText="Open Google Pay";
+    }
+    window.location.href=link;
+}
+
+function submitUTR() {
+  if (!utr.value) { alert("Enter UTR"); return; }
+  
+  let history = JSON.parse(localStorage.getItem("depositHistory") || "[]");
+  
+  history.unshift({
+    method: method,
+    amount: amount,
+    utr: utr.value,
+    time: new Date().toLocaleString(),
+    status: "PENDING"
+  });
+  
+  localStorage.setItem("depositHistory", JSON.stringify(history));
+  
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors", // 🔥 MOST IMPORTANT
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        type: "deposit",
+        mobile: localStorage.getItem("mobile") || "UNKNOWN",
+        amount: amount,
+        utr: utr.value
+    })
+});
+  
+  alert("Deposit request submitted");
+  modal.style.display = "none";
+}
+</script>
+
+</body>
+</html>
