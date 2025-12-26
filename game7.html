@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odd-Even Dice - Jalwa Pro</title>
+    <style>
+        :root { 
+            --bg: #010A22; --card: #161d31; --gold: #fb9401; 
+            --green: #2ecc71; --red: #d9534f; --blue: #3498db;
+            --gray: #8a9bb5; 
+        }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; user-select: none; overflow-x: hidden; }
+        .app { width: 100%; max-width: 400px; margin: auto; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .wallet { background: linear-gradient(135deg, #022170, #001a4d); margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c2641; }
+        
+        .game-area { flex: 1; background: radial-gradient(circle, #0a4d7a 0%, #010A22 100%); margin: 10px; border-radius: 20px; padding: 20px; text-align: center; border: 2px solid #0a4d7a; position: relative; }
+        
+        .dice-container { display: flex; justify-content: center; gap: 12px; margin: 20px 0; }
+        .dice { 
+            width: 75px; height: 75px; 
+            background-color: white; 
+            border-radius: 15px; 
+            background-size: cover; 
+            background-position: center;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.2), 0 8px 15px rgba(0,0,0,0.4);
+        }
+
+        .rolling { animation: diceRoll 0.15s infinite; }
+        @keyframes diceRoll {
+            0% { transform: translate(2px, 2px) rotate(0deg); }
+            50% { transform: translate(-2px, -2px) rotate(180deg); }
+            100% { transform: translate(2px, 2px) rotate(360deg); }
+        }
+
+        /* Bet Amount Box (Image Jaisa) */
+        .bet-display-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.5);
+            padding: 8px 25px;
+            margin: 15px 0;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.05);
+        }
+        .coin-icon {
+            width: 18px; height: 18px;
+            background: var(--gold);
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px dashed white;
+        }
+
+        /* Betting Buttons with 2X */
+        .action-btns { display: flex; padding: 10px 15px; gap: 10px; }
+        .btn { 
+            flex: 1; padding: 12px 5px; border: none; border-radius: 5px; 
+            font-weight: bold; color: white; cursor: pointer; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .even-btn { background: #1e8449; }
+        .odd-btn { background: #d68910; }
+        .btn span { font-size: 20px; margin-bottom: 2px; }
+        .btn small { font-size: 11px; color: rgba(255,255,255,0.8); font-weight: normal; }
+
+        .chip-row { display: flex; justify-content: center; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
+        .chip { width: 45px; height: 45px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; }
+        .chip.active { border-color: white; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        .total-badge { background: #27ae60; color: white; padding: 5px 15px; border-radius: 15px; font-weight: bold; margin: 10px 0; display: inline-block; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .pop-card { background: white; color: #333; width: 80%; border-radius: 20px; text-align: center; padding: 25px; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div class="wallet">
+        <div><small style="color:var(--gray)">Available Balance</small><div id="bal-text" style="font-size: 22px; font-weight: bold;">₹0.00</div></div>
+        <button onclick="loadBalance()" style="background:var(--gold); border:none; padding:8px 15px; border-radius:20px; font-weight:bold; color:white; font-size:12px;">Refresh</button>
+    </div>
+
+    <div class="game-area">
+        <h3 style="margin: 0; opacity: 0.9;">Even-Odd</h3>
+        
+        <div class="dice-container">
+            <div id="d1" class="dice" style="background-image: url('dice1.png');"></div>
+            <div id="d2" class="dice" style="background-image: url('dice3.png');"></div>
+            <div id="d3" class="dice" style="background-image: url('dice6.png');"></div>
+        </div>
+
+        <div style="font-size: 16px; font-weight: bold; color: #ccc;">PAYS 2X</div>
+        <div style="font-size: 11px; color: var(--gray); margin-bottom: 5px;">LOSE IF TRIPLE APPEARS</div>
+
+        <div id="total-display" class="total-badge" style="visibility: hidden;">Total 0</div>
+
+        <div>
+            <div class="bet-display-container">
+                <span style="font-size: 14px; margin-right: 15px; opacity: 0.8;">Bet</span>
+                <div class="coin-icon"></div>
+                <span id="bet-amt-display" style="font-weight: bold; font-size: 16px;">10.00</span>
+            </div>
+        </div>
+
+        <div id="status-msg" style="margin-top: 10px; font-weight: bold; color: var(--gold); min-height: 20px;"></div>
+
+        <div class="chip-row">
+            <div class="chip active" style="background:#3498db" onclick="setBet(10, this)">10</div>
+            <div class="chip" style="background:#9b59b6" onclick="setBet(50, this)">50</div>
+            <div class="chip" style="background:#e67e22" onclick="setBet(100, this)">100</div>
+            <div class="chip" style="background:#c0392b" onclick="setBet(500, this)">500</div>
+            <div class="chip" style="background:#16a085" onclick="setBet(1000, this)">1K</div>
+        </div>
+    </div>
+
+    <div class="action-btns" id="control-btns">
+        <button class="btn even-btn" onclick="placeBet('EVEN')">
+            <span>EVEN</span>
+            <small>Pays 2x</small>
+        </button>
+        <button class="btn odd-btn" onclick="placeBet('ODD')">
+            <span>ODD</span>
+            <small>Pays 2x</small>
+        </button>
+    </div>
+    
+    <div id="reset-btns" style="display: none; padding: 15px;">
+        <button class="btn" style="background:#34495e; width: 100%; border-radius: 5px; height: 50px;" onclick="newRound()">New Round</button>
+    </div>
+</div>
+
+<div id="result-popup" class="overlay">
+    <div class="pop-card">
+        <h2 id="pop-title">WIN!</h2>
+        <div id="pop-amt" style="font-size: 30px; font-weight: bold; color:var(--gold); margin: 15px 0;">₹0.00</div>
+        <button class="btn" style="background:var(--bg); width: 100%; height: 45px;" onclick="closePopup()">CLOSE</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+    const mobile = localStorage.getItem("mobile");
+    let balance = 0;
+    let selectedBet = 10;
+
+    const diceImgMap = {
+        1: "dice1.png", 2: "dice2.png", 3: "dice3.png",
+        4: "dice4.png", 5: "dice5.png", 6: "dice6.png"
+    };
+
+    async function callScript(payload) { 
+        try { 
+            const r = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }); 
+            return await r.json(); 
+        } catch (e) { return null; } 
+    }
+
+    async function loadBalance() { 
+        if(!mobile) return; 
+        const d = await callScript({ type: "getUser", mobile: mobile }); 
+        if(d && d.balance !== undefined) { 
+            balance = parseFloat(d.balance); 
+            document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2); 
+        } 
+    }
+
+    function setBet(amt, el) {
+        selectedBet = amt;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('bet-amt-display').innerText = amt.toFixed(2);
+    }
+
+    async function placeBet(choice) {
+        if (balance < selectedBet) { alert("Low Balance!"); return; }
+
+        balance -= selectedBet;
+        document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2);
+        callScript({ type: "game", mobile: mobile, change: -selectedBet });
+
+        const dEls = [document.getElementById('d1'), document.getElementById('d2'), document.getElementById('d3')];
+        dEls.forEach(el => el.classList.add('rolling'));
+        document.getElementById('status-msg').innerText = "Rolling...";
+        document.getElementById('control-btns').style.pointerEvents = "none";
+        document.getElementById('control-btns').style.opacity = "0.6";
+
+        setTimeout(() => {
+            const r1 = Math.floor(Math.random() * 6) + 1;
+            const r2 = Math.floor(Math.random() * 6) + 1;
+            const r3 = Math.floor(Math.random() * 6) + 1;
+            const total = r1 + r2 + r3;
+            const isTriple = (r1 === r2 && r2 === r3);
+            const winSide = (total % 2 === 0) ? "EVEN" : "ODD";
+
+            dEls[0].classList.remove('rolling'); dEls[0].style.backgroundImage = `url(${diceImgMap[r1]})`;
+            dEls[1].classList.remove('rolling'); dEls[1].style.backgroundImage = `url(${diceImgMap[r2]})`;
+            dEls[2].classList.remove('rolling'); dEls[2].style.backgroundImage = `url(${diceImgMap[r3]})`;
+
+            document.getElementById('total-display').innerText = "Total " + total;
+            document.getElementById('total-display').style.visibility = "visible";
+
+            let won = (choice === winSide && !isTriple);
+            let winAmt = won ? selectedBet * 2 : 0;
+
+            if (isTriple) {
+                document.getElementById('status-msg').innerHTML = "<span style='color:var(--red)'>TRIPLE! LOSS</span>";
+            } else if (won) {
+                document.getElementById('status-msg').innerHTML = "<span style='color:var(--green)'>WIN!</span>";
+                balance += winAmt;
+                callScript({ type: "game", mobile: mobile, change: winAmt }).then(() => loadBalance());
+            } else {
+                document.getElementById('status-msg').innerHTML = "<span style='color:var(--red)'>LOSS</span>";
+            }
+
+            setTimeout(() => showPopup(won, winAmt), 500);
+            document.getElementById('control-btns').style.display = "none";
+            document.getElementById('reset-btns').style.display = "block";
+        }, 1200);
+    }
+
+    function showPopup(won, amt) {
+        document.getElementById('pop-title').innerText = won ? "CONGRATULATIONS" : "SORRY!";
+        document.getElementById('pop-title').style.color = won ? "var(--green)" : "var(--red)";
+        document.getElementById('pop-amt').innerText = "₹" + amt.toFixed(2);
+        document.getElementById('result-popup').style.display = "flex";
+    }
+
+    function closePopup() { document.getElementById('result-popup').style.display = "none"; }
+
+    function newRound() {
+        document.getElementById('total-display').style.visibility = "hidden";
+        document.getElementById('status-msg').innerText = "";
+        document.getElementById('control-btns').style.display = "flex";
+        document.getElementById('control-btns').style.pointerEvents = "auto";
+        document.getElementById('control-btns').style.opacity = "1";
+        document.getElementById('reset-btns').style.display = "none";
+    }
+
+    window.onload = loadBalance;
+</script>
+</body>
+</html>
