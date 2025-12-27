@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jalwa Aviator Pro - Dark Edition</title>
+    <style>
+        :root { 
+            --bg: #000000; --card: #1c1d21; --gold: #f3ad0c; 
+            --green: #28a745; --red: #e11d48; --blue: #3498db;
+        }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; user-select: none; overflow: hidden; }
+        .app { width: 100%; max-width: 400px; margin: auto; height: 100vh; display: flex; flex-direction: column; }
+
+        /* Header */
+        .header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: #141518; z-index: 20; }
+        .bal-container { background: #000; padding: 5px 15px; border-radius: 20px; border: 1.5px solid #2c2d31; color: #28a745; font-weight: bold; }
+
+        /* Fly Screen Area */
+        .game-view { 
+            flex: 2; 
+            margin: 10px; 
+            background: #000; 
+            border-radius: 15px; 
+            position: relative; 
+            overflow: hidden; 
+            border: 1px solid #2c2d31; 
+        }
+        #chartCanvas { width: 100%; height: 100%; }
+        .multiplier { 
+            position: absolute; top: 35%; left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-size: 55px; font-weight: 800; 
+            z-index: 10; 
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(225, 29, 72, 0.6); 
+        }
+        .plane-icon { position: absolute; width: 60px; z-index: 12; display: none; filter: drop-shadow(0 0 10px var(--red)); }
+
+        /* Betting Controls */
+        .controls { 
+            padding: 20px 15px; 
+            background: #141518; 
+            border-radius: 25px 25px 0 0; 
+            border-top: 1px solid #2c2d31;
+        }
+        .bet-box { background: var(--card); padding: 15px; border-radius: 20px; }
+        
+        .chip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .chip { 
+            background: #2c2d31; padding: 12px 5px; 
+            text-align: center; border-radius: 10px; 
+            font-size: 15px; font-weight: bold; 
+            border: 2px solid transparent; cursor: pointer; color: #ccc;
+        }
+        .chip.active { border-color: var(--green); color: var(--green); background: rgba(40, 167, 69, 0.1); }
+
+        .main-action-btn { width: 100%; padding: 22px; border: none; border-radius: 15px; font-size: 24px; font-weight: bold; color: white; cursor: pointer; text-transform: uppercase; }
+        .btn-bet { background: var(--green); box-shadow: 0 5px 0 #1e7e34; }
+        .btn-cashout { background: var(--gold); box-shadow: 0 5px 0 #c78e0a; }
+        .btn-cashout small { display: block; font-size: 13px; margin-top: 2px; }
+
+        .history { display: flex; gap: 8px; padding: 10px 15px; overflow-x: auto; background: #000; font-size: 12px; }
+        .hist-tag { padding: 3px 10px; border-radius: 12px; background: #1c1d21; color: #9b59b6; font-weight: bold; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div class="header">
+        <span style="color:var(--red); font-weight:900; font-style:italic; font-size:24px;">Aviator</span>
+        <div class="bal-container">₹ <span id="balance">0.00</span></div>
+    </div>
+
+    <div class="history" id="history-bar"></div>
+
+    <div class="game-view">
+        <canvas id="chartCanvas"></canvas>
+        <div class="multiplier" id="mult-display">1.00x</div>
+        <img src="plane.png" id="plane" class="plane-icon" alt="plane">
+        <div id="crash-msg" style="position:absolute; top:55%; left:50%; transform:translateX(-50%); color:var(--red); font-weight:900; font-size:32px; display:none; text-align:center; width:100%; z-index:15;">FLEW AWAY!</div>
+    </div>
+
+    <div class="controls">
+        <div class="bet-box">
+            <div class="chip-grid">
+                <div class="chip active" onclick="setBet(10, this)">10</div>
+                <div class="chip" onclick="setBet(50, this)">50</div>
+                <div class="chip" onclick="setBet(100, this)">100</div>
+                <div class="chip" onclick="setBet(250, this)">250</div>
+                <div class="chip" onclick="setBet(500, this)">500</div>
+                <div class="chip" onclick="setBet(1000, this)">1000</div>
+            </div>
+            <button id="action-btn" class="main-action-btn btn-bet" onclick="handleAction()">BET</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+    const mobile = localStorage.getItem("mobile");
+    
+    let balance = 0;
+    let betAmount = 10;
+    let isPlaying = false;
+    let isCashedOut = false;
+    let multiplier = 1.00;
+    let crashPoint = 0;
+    let gameLoop;
+
+    const canvas = document.getElementById('chartCanvas');
+    const ctx = canvas.getContext('2d');
+    const planeImg = document.getElementById('plane');
+
+    function resizeCanvas() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    async function fetchBalance() {
+        if(!mobile) return;
+        try {
+            const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({type: "getUser", mobile: mobile}) });
+            const d = await r.json();
+            balance = parseFloat(d.balance);
+            document.getElementById('balance').innerText = balance.toFixed(2);
+        } catch(e){}
+    }
+
+    function setBet(amt, el) {
+        if(isPlaying) return;
+        betAmount = amt;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function handleAction() {
+        if(!isPlaying) startRound();
+        else if(!isCashedOut) cashOut();
+    }
+
+    function startRound() {
+        if(balance < betAmount) { alert("Low Balance"); return; }
+        
+        balance -= betAmount;
+        document.getElementById('balance').innerText = balance.toFixed(2);
+        fetch(API_URL, { method: "POST", body: JSON.stringify({ type: "game", mobile: mobile, change: -betAmount }) });
+
+        isPlaying = true;
+        isCashedOut = false;
+        multiplier = 1.00;
+        
+        crashPoint = Math.random() < 0.1 ? 1.00 : (1 + Math.random() * 8).toFixed(2);
+        
+        document.getElementById('crash-msg').style.display = 'none';
+        document.getElementById('mult-display').style.color = '#fff';
+        planeImg.style.display = 'block';
+        
+        document.getElementById('action-btn').className = "main-action-btn btn-cashout";
+        gameLoop = setInterval(updateGame, 50);
+    }
+
+    function updateGame() {
+        multiplier += 0.01 * (1 + multiplier * 0.12);
+        document.getElementById('mult-display').innerText = multiplier.toFixed(2) + "x";
+        
+        if(!isCashedOut) {
+            document.getElementById('action-btn').innerHTML = `CASH OUT<small>INR ${(betAmount * multiplier).toFixed(2)}</small>`;
+        }
+
+        drawRedHill(multiplier);
+
+        if(multiplier >= crashPoint) {
+            endRound();
+        }
+    }
+
+    function drawRedHill(m) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Accurate diagonal movement
+        const progress = Math.min((m - 1) / 8, 0.9); 
+        const endX = 30 + (canvas.width - 100) * progress;
+        const endY = canvas.height - 30 - (canvas.height - 120) * progress;
+
+        // Hill Glow Gradient
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        ctx.quadraticCurveTo(endX / 2, canvas.height, endX, endY);
+        ctx.lineTo(endX, canvas.height);
+        ctx.closePath();
+        let g = ctx.createLinearGradient(0, endY, 0, canvas.height);
+        g.addColorStop(0, "rgba(225, 29, 72, 0.6)");
+        g.addColorStop(1, "rgba(225, 29, 72, 0)");
+        ctx.fillStyle = g;
+        ctx.fill();
+
+        // Animated Red Line
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        ctx.quadraticCurveTo(endX / 2, canvas.height, endX, endY);
+        ctx.strokeStyle = "#e11d48";
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        // Position Plane
+        planeImg.style.left = (endX - 25) + "px";
+        planeImg.style.top = (endY - 25) + "px";
+    }
+
+    function cashOut() {
+        if(isCashedOut) return;
+        isCashedOut = true;
+        
+        const winAmt = betAmount * multiplier;
+        balance += winAmt;
+        document.getElementById('balance').innerText = balance.toFixed(2);
+        document.getElementById('mult-display').style.color = "#28a745";
+        
+        const btn = document.getElementById('action-btn');
+        btn.className = "main-action-btn btn-bet";
+        btn.innerText = "BET";
+        btn.style.opacity = "0.5";
+
+        fetch(API_URL, { method: "POST", body: JSON.stringify({ type: "game", mobile: mobile, change: winAmt }) });
+    }
+
+    function endRound() {
+        clearInterval(gameLoop);
+        isPlaying = false;
+        planeImg.style.display = 'none';
+        document.getElementById('crash-msg').style.display = 'block';
+        document.getElementById('mult-display').style.color = 'var(--red)';
+        
+        const btn = document.getElementById('action-btn');
+        btn.style.opacity = "1";
+        btn.className = "main-action-btn btn-bet";
+        btn.innerText = "BET";
+
+        const hist = document.getElementById('history-bar');
+        const tag = document.createElement('div');
+        tag.className = 'hist-tag';
+        tag.innerText = parseFloat(crashPoint).toFixed(2) + "x";
+        hist.prepend(tag);
+        if(hist.children.length > 10) hist.lastChild.remove();
+    }
+
+    window.onload = fetchBalance;
+</script>
+</body>
+</html>
