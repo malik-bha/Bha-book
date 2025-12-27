@@ -1,14 +1,227 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mines Pro Elite</title>
+    <style>
+        :root { 
+            --bg: #010613; --card: #0f172a; --gold: #fcc201; 
+            --green: #00e676; --red: #ff3d00; --blue: #2979ff;
+        }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; user-select: none; }
+        .app { width: 100%; max-width: 420px; margin: auto; height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Header */
+        .header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border-bottom: 1px solid #1e293b; }
+        .bal-box { display: flex; flex-direction: column; }
+        .bal-val { font-size: 20px; font-weight: 900; color: var(--gold); }
+
+        /* Perfect 15 Slots Grid (3x5) */
+        .game-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
+        .grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); 
+            grid-template-rows: repeat(5, 1fr);
+            gap: 10px; width: 100%; height: 90%; max-height: 500px;
+        }
+        .slot {
+            background: #1e293b; border-radius: 12px; border: 1px solid #334155;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 4px 0 #0f172a; position: relative; overflow: hidden;
+        }
+        .slot.revealed-cash { background: #064e3b; border-color: var(--green); color: var(--green); transform: scale(0.95); box-shadow: none; }
+        .slot.revealed-mine { background: #7f1d1d; border-color: var(--red); color: white; box-shadow: none; }
+        .slot.missed { opacity: 0.4; filter: grayscale(1); }
+
+        /* Chips Section */
+        .controls { background: #0f172a; border-radius: 20px 20px 0 0; padding: 15px; }
+        .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        .chip { background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 10px; text-align: center; font-size: 12px; cursor: pointer; color: #94a3b8; }
+        .chip.active { background: var(--blue); color: white; border-color: #fff; }
+
+        /* Big Action Buttons */
+        .footer { display: flex; gap: 10px; }
+        .action-btn {
+            flex: 1; height: 75px; border: none; border-radius: 18px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.1s;
+        }
+        .bet-btn { background: var(--green); color: #000; box-shadow: 0 6px 0 #059669; }
+        .cashout-btn { background: var(--gold); color: #000; box-shadow: 0 6px 0 #b45309; display: none; }
+        .action-btn b { font-size: 22px; font-weight: 900; }
+        .action-btn span { font-size: 13px; font-weight: bold; opacity: 0.7; }
+        .action-btn:active { transform: translateY(3px); box-shadow: none; }
+
+        /* Result Popup */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .pop-card { background: white; color: #000; width: 80%; padding: 30px; border-radius: 25px; text-align: center; border: 5px solid var(--green); }
+    </style>
 </head>
-
 <body>
-  
-</body>
 
+<div class="app">
+    <div class="header">
+        <div class="bal-box">
+            <small style="color:#94a3b8">BALANCE</small>
+            <div id="bal-text" class="bal-val">₹0.00</div>
+        </div>
+        <button onclick="loadBalance()" style="background:var(--blue); border:none; padding:8px 15px; border-radius:10px; color:white; font-size:11px; font-weight:bold;">REFRESH</button>
+    </div>
+
+    <div class="game-container">
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="controls">
+        <div class="chips" id="chip-box">
+            <div class="chip active" onclick="setBet(10, this)">₹10</div>
+            <div class="chip" onclick="setBet(50, this)">₹50</div>
+            <div class="chip" onclick="setBet(100, this)">₹100</div>
+            <div class="chip" onclick="setBet(1000, this)">₹1K</div>
+            <div class="chip" onclick="setBet(5000, this)">₹5K</div>
+            <div class="chip" onclick="setBet(10000, this)">₹10K</div>
+        </div>
+
+        <div class="footer">
+            <button id="bet-btn" class="action-btn bet-btn" onclick="startGame()">
+                <b>BET</b>
+                <span id="bet-sub">₹10.00</span>
+            </button>
+            <button id="cashout-btn" class="action-btn cashout-btn" onclick="cashout()">
+                <b>CASHOUT</b>
+                <span id="cashout-sub">₹0.00</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="overlay" class="overlay">
+    <div class="pop-card">
+        <h1 style="margin:0">WINNER!</h1>
+        <div id="pop-amt" style="font-size: 40px; font-weight: 900; margin: 15px 0; color: #059669;">₹0.00</div>
+        <button class="action-btn bet-btn" style="width:100%; height:55px" onclick="closePopup()">CONTINUE</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+    const mobile = localStorage.getItem("mobile");
+    
+    let balance = 0, selectedBet = 10, isPlaying = false;
+    let pendingCash = 0, currentStep = 0, minesPositions = [];
+
+    async function loadBalance() {
+        if(!mobile) return;
+        const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({type: "getUser", mobile: mobile}) });
+        const d = await r.json();
+        balance = parseFloat(d.balance);
+        document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2);
+    }
+
+    function setBet(amt, el) {
+        if(isPlaying) return;
+        selectedBet = amt;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('bet-sub').innerText = "₹" + amt.toFixed(2);
+    }
+
+    function createGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        for(let i=0; i<15; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            slot.dataset.id = i;
+            slot.onclick = () => handleMove(i, slot);
+            grid.appendChild(slot);
+        }
+    }
+
+    async function startGame() {
+        if(balance < selectedBet) { alert("Low Balance!"); return; }
+        
+        isPlaying = true; currentStep = 0; pendingCash = 0;
+        balance -= selectedBet;
+        document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2);
+        fetch(API_URL, { method: "POST", body: JSON.stringify({type: "game", mobile: mobile, change: -selectedBet})});
+
+        document.getElementById('bet-btn').style.display = 'none';
+        document.getElementById('cashout-btn').style.display = 'flex';
+        document.getElementById('cashout-sub').innerText = "₹0.00";
+        document.getElementById('chip-box').style.opacity = '0.3';
+        document.getElementById('chip-box').style.pointerEvents = 'none';
+
+        minesPositions = [];
+        while(minesPositions.length < 5) {
+            let r = Math.floor(Math.random()*15);
+            if(!minesPositions.includes(r)) minesPositions.push(r);
+        }
+        createGrid();
+    }
+
+    function handleMove(idx, el) {
+        if(!isPlaying || el.classList.contains('revealed-cash')) return;
+
+        if(minesPositions.includes(idx)) {
+            el.classList.add('revealed-mine');
+            el.innerHTML = "💣";
+            isPlaying = false;
+            revealAll();
+            setTimeout(() => { alert("BOOM! You lost."); resetUI(); }, 1500);
+        } else {
+            currentStep++;
+            el.classList.add('revealed-cash');
+            pendingCash = selectedBet * currentStep;
+            el.innerText = "₹" + pendingCash;
+            document.getElementById('cashout-sub').innerText = "₹" + pendingCash.toFixed(2);
+            if(currentStep === 10) cashout();
+        }
+    }
+
+    function revealAll() {
+        const slots = document.querySelectorAll('.slot');
+        slots.forEach((slot, i) => {
+            const idx = parseInt(slot.dataset.id);
+            if(minesPositions.includes(idx)) {
+                slot.classList.add('revealed-mine');
+                slot.innerHTML = "💣";
+            } else if(!slot.classList.contains('revealed-cash')) {
+                slot.classList.add('missed');
+                slot.innerText = "₹";
+            }
+        });
+    }
+
+    async function cashout() {
+        if(!isPlaying) return;
+        isPlaying = false;
+        
+        revealAll(); // Reveal everything on cashout as requested
+        
+        await fetch(API_URL, { method: "POST", body: JSON.stringify({type: "game", mobile: mobile, change: pendingCash})});
+        loadBalance();
+
+        setTimeout(() => {
+            document.getElementById('pop-amt').innerText = "₹" + pendingCash.toFixed(2);
+            document.getElementById('overlay').style.display = 'flex';
+            resetUI();
+        }, 1000);
+    }
+
+    function resetUI() {
+        isPlaying = false;
+        document.getElementById('bet-btn').style.display = 'flex';
+        document.getElementById('cashout-btn').style.display = 'none';
+        document.getElementById('chip-box').style.opacity = '1';
+        document.getElementById('chip-box').style.pointerEvents = 'auto';
+        createGrid();
+    }
+
+    function closePopup() { document.getElementById('overlay').style.display = 'none'; }
+
+    window.onload = () => { loadBalance(); createGrid(); };
+</script>
+</body>
 </html>
