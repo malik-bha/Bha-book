@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Scratch - Highlight Pro</title>
+    <style>
+        :root { 
+            --bg: #010613; --card: #0a1428; --gold: #fcc201; 
+            --green: #00e676; --red: #ff3d00; --blue: #2979ff;
+        }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; user-select: none; overflow: hidden; }
+        .app { width: 100%; max-width: 420px; margin: auto; height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Wallet */
+        .wallet { background: linear-gradient(135deg, #0f1c3f, #010613); margin: 10px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1e293b; }
+        .bal-val { font-size: 20px; font-weight: 800; color: var(--gold); }
+
+        /* Card Section */
+        .card-wrapper { position: relative; width: 320px; height: 400px; margin: 15px auto; border-radius: 20px; overflow: hidden; border: 3px solid #1e293b; transition: 0.3s; }
+        .ready-glow { border-color: var(--gold); box-shadow: 0 0 30px rgba(252, 194, 1, 0.4); }
+
+        .slots-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); 
+            grid-template-rows: repeat(7, 1fr);
+            gap: 5px; height: 100%; width: 100%; background: #050b18; padding: 5px; box-sizing: border-box;
+        }
+        .slot {
+            background: rgba(255,255,255,0.05); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 900; color: #fff; border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.5s ease;
+        }
+        
+        /* Highlight Winning Slots */
+        .winning-slot {
+            background: var(--gold) !important;
+            color: #000 !important;
+            border: 2px solid white !important;
+            box-shadow: 0 0 15px var(--gold);
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        canvas { position: absolute; top: 0; left: 0; z-index: 10; cursor: crosshair; touch-action: none; }
+
+        /* Controls */
+        .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 20px; }
+        .chip { background: #111d35; border: 1px solid #1e293b; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer; font-size: 13px; color: #8a9bb5; }
+        .chip.active { background: var(--blue); border-color: #fff; color: #fff; }
+
+        .footer { padding: 10px 20px 20px; }
+        .buy-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 15px;
+            background: linear-gradient(to bottom, #fcc201, #b38a00);
+            color: #000; font-size: 18px; font-weight: 900; cursor: pointer;
+            box-shadow: 0 4px 0 #7a5e00;
+        }
+        .buy-btn:disabled { opacity: 0.5; box-shadow: none; }
+
+        /* Popup */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .win-pop { background: #fff; color: #000; width: 80%; padding: 30px; border-radius: 25px; text-align: center; border: 5px solid var(--gold); }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div class="wallet">
+        <div><small style="color:#64748b">Balance</small><div id="bal-text" class="bal-val">₹0.00</div></div>
+        <button onclick="loadBalance()" style="background:var(--blue); border:none; padding:8px 12px; border-radius:8px; color:#fff; font-weight:bold;">Refresh</button>
+    </div>
+
+    <div class="card-wrapper" id="card-box">
+        <div class="slots-grid" id="grid"></div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="chips">
+        <div class="chip active" onclick="setBet(10, this)">₹10</div>
+        <div class="chip" onclick="setBet(50, this)">₹50</div>
+        <div class="chip" onclick="setBet(100, this)">₹100</div>
+        <div class="chip" onclick="setBet(1000, this)">₹1K</div>
+        <div class="chip" onclick="setBet(5000, this)">₹5K</div>
+        <div class="chip" onclick="setBet(10000, this)">₹10K</div>
+    </div>
+
+    <div class="footer">
+        <button id="buy-btn" class="buy-btn" onclick="startGame()">BUY NEW CARD</button>
+        <p id="status" style="text-align:center; font-size:12px; color:var(--gold); margin-top:10px;">SCRATCH TO REVEAL CASH!</p>
+    </div>
+</div>
+
+<div id="overlay" class="overlay">
+    <div class="win-pop">
+        <h1 id="res-title" style="margin:0;">JACKPOT!</h1>
+        <div id="res-amt" style="font-size: 40px; font-weight: 900; margin: 15px 0; color: #b38a00;">₹0.00</div>
+        <button class="buy-btn" onclick="closePopup()">COLLECT CASH</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzq-CozHl9G9E4FN3aoFXa2Zq8uT5kX7WOpvMgwgBYzOe-ZpqSA_HjBb85AHWi7jwg/exec";
+    const mobile = localStorage.getItem("mobile");
+    let balance = 0, selectedBet = 10, isBusy = false;
+    
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 320; canvas.height = 400;
+
+    function drawCover() {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Golden Pattern
+        ctx.strokeStyle = "rgba(252, 194, 1, 0.2)";
+        for(let i=0; i<400; i+=20) {
+            ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(320, i+40); ctx.stroke();
+        }
+    }
+
+    async function loadBalance() {
+        if(!mobile) return;
+        const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({type: "getUser", mobile: mobile}) });
+        const d = await r.json();
+        balance = parseFloat(d.balance);
+        document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2);
+    }
+
+    function setBet(amt, el) {
+        if(isBusy) return;
+        selectedBet = amt;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    async function startGame() {
+        if(balance < selectedBet) { alert("Insufficient Balance"); return; }
+        isBusy = true;
+        document.getElementById('buy-btn').disabled = true;
+        
+        balance -= selectedBet;
+        document.getElementById('bal-text').innerText = "₹" + balance.toFixed(2);
+        fetch(API_URL, { method: "POST", body: JSON.stringify({type: "game", mobile: mobile, change: -selectedBet})});
+
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        
+        let isWin = Math.random() < 0.25;
+        let winVal = 0;
+        let pool = [];
+
+        if(isWin) {
+            const mults = [1, 2, 5, 10, 20, 50];
+            winVal = selectedBet * mults[Math.floor(Math.random()*mults.length)];
+            pool = [winVal, winVal, winVal];
+        }
+
+        while(pool.length < 21) {
+            let r = selectedBet * (Math.floor(Math.random()*50)+1);
+            if(pool.filter(x => x === r).length < 2) pool.push(r);
+        }
+        pool.sort(() => Math.random() - 0.5);
+
+        pool.forEach((v, index) => {
+            const d = document.createElement('div');
+            d.className = 'slot'; 
+            d.innerText = "₹"+v; 
+            d.dataset.value = v; // Store value for highlighting
+            grid.appendChild(d);
+        });
+
+        drawCover();
+        document.getElementById('card-box').classList.add('ready-glow');
+        enableScratch(isWin, winVal);
+    }
+
+    function enableScratch(isWin, winVal) {
+        let scratchedArea = 0;
+        const threshold = canvas.width * canvas.height * 0.6;
+
+        const doScratch = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, 25, 0, Math.PI*2);
+            ctx.fill();
+
+            scratchedArea += 450; 
+            if(scratchedArea >= threshold) {
+                canvas.onmousemove = canvas.ontouchmove = null;
+                scratchedArea = -9999999;
+                
+                // Winning logic with highlight
+                if(isWin) {
+                    highlightWinningSlots(winVal);
+                    setTimeout(() => showResult(true, winVal), 1000); // 2 Second Delay
+                } else {
+                    setTimeout(() => showResult(false, 0), 1000);
+                }
+            }
+        };
+
+        canvas.onmousemove = doScratch;
+        canvas.ontouchmove = doScratch;
+    }
+
+    function highlightWinningSlots(value) {
+        const slots = document.querySelectorAll('.slot');
+        slots.forEach(slot => {
+            if(slot.dataset.value == value) {
+                slot.classList.add('winning-slot');
+            }
+        });
+    }
+
+    async function showResult(win, amt) {
+        if(win) {
+            await fetch(API_URL, { method: "POST", body: JSON.stringify({type: "game", mobile: mobile, change: amt})});
+            loadBalance();
+        }
+        document.getElementById('res-title').innerText = win ? "WINNER!" : "LOST";
+        document.getElementById('res-title').style.color = win ? "var(--green)" : "var(--red)";
+        document.getElementById('res-amt').innerText = "₹" + amt.toFixed(2);
+        document.getElementById('overlay').style.display = 'flex';
+    }
+
+    function closePopup() {
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('buy-btn').disabled = false;
+        isBusy = false;
+        ctx.clearRect(0,0,320,400);
+        document.getElementById('card-box').classList.remove('ready-glow');
+        document.getElementById('grid').innerHTML = '';
+        drawCover();
+    }
+
+    window.onload = () => { loadBalance(); drawCover(); };
+</script>
+</body>
+</html>
